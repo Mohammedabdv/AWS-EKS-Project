@@ -51,14 +51,17 @@ jobs:
 
       - name: Configure test database
         run: |
-          echo "POSTGRES_HOST=127.0.0.1"     >> .env
-          echo "POSTGRES_DB=django_app"      >> .env
-          echo "POSTGRES_USER=django_user"   >> .env
-          echo "POSTGRES_PASSWORD=django1234" >> .env
-          echo "DJANGO_SETTINGS_MODULE=app.settings" >> .env
+          echo "POSTGRES_HOST=127.0.0.1"      >> app/.env
+          echo "POSTGRES_DB=django_app"       >> app/.env
+          echo "POSTGRES_USER=django_user"    >> app/.env
+          echo "POSTGRES_PASSWORD=django1234" >> app/.env
 
       - name: Run tests
-        run: python app/manage.py test
+        env:
+          DJANGO_SETTINGS_MODULE: settings.dev
+        run: |
+            cd app
+            python manage.py test
 
   # 2- Build Stage ────────────────────────────────
   build:

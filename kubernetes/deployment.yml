@@ -16,7 +16,10 @@ spec:
       containers:
         - name: django
           image: <ECR_URL>:latest
-          command: ["gunicorn", "--bind", "0.0.0.0:8000", "app.wsgi:application"] 
+          command: ["gunicorn", "--bind", "0.0.0.0:8000", "app.wsgi:application"]
+          env:
+          - name: DJANGO_SETTINGS_MODULE
+            value: settings.base 
           ports:
             - containerPort: 8000
           envFrom:

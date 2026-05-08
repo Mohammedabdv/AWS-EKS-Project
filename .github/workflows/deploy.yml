@@ -85,7 +85,7 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region:            ${{ env.AWS_REGION }}
 
-          
+
       # Authenticate with Amazon ECR (Elastic Container Registry)
       - name: Login to Amazon ECR
         id: login-ecr # Give this step an ID so we can reference its outputs later
@@ -98,7 +98,8 @@ jobs:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }} # Grab the registry URL from the previous step's output
           IMAGE_TAG: ${{ github.sha }}
         run: |
-          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG . 
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG \
+          -f docker/app/dev/Dockerfile .  
           docker tag $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG $ECR_REGISTRY/$ECR_REPOSITORY:latest
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest

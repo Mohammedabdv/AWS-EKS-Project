@@ -55,10 +55,12 @@ jobs:
           echo "POSTGRES_DB=django_app"       >> app/.env
           echo "POSTGRES_USER=django_user"    >> app/.env
           echo "POSTGRES_PASSWORD=django1234" >> app/.env
+          echo "SECRET_KEY=django-insecure-test-key-1234567890" >> app/.env
 
       - name: Run tests
         env:
           DJANGO_SETTINGS_MODULE: settings.dev
+          SECRET_KEY: django-insecure-test-key-1234567890
         run: |
             cd app
             python manage.py test

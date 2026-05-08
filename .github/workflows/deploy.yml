@@ -57,7 +57,7 @@ jobs:
           echo "POSTGRES_PASSWORD=django1234" >> .env
 
       - name: Run tests
-        run: python manage.py test
+        run: python app/manage.py test
 
   # 2- Build Stage ────────────────────────────────
   build:

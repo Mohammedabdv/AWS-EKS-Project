@@ -108,7 +108,7 @@ jobs:
         # 1- Build the Docker image and tag it with the commit SHA → for traceability, so we can roll back to any previous build
         # 2- Also tag the image as 'latest'  → always points to the newest build used by deployments as a default
         # 3- Push both tags to ECR
-        # 4- Save the full image URI as a step output so later jobs/steps can reference it, e.g. to deploy this exact image to ECS or Kubernetes
+        # 4- Save the full image URI as a step output so later  jobs/steps can reference it, e.g. to deploy this exact image to ECS or Kubernetes
 
   # 3- Deploy Stage ───────────────────────────────
   deploy:

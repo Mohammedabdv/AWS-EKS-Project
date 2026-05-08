@@ -51,16 +51,18 @@ jobs:
 
       - name: Configure test database
         run: |
-          echo "POSTGRES_HOST=127.0.0.1"      >> app/.env
-          echo "POSTGRES_DB=django_app"       >> app/.env
-          echo "POSTGRES_USER=django_user"    >> app/.env
-          echo "POSTGRES_PASSWORD=django1234" >> app/.env
-          echo "SECRET_KEY=django-insecure-test-key-1234567890" >> app/.env
+          echo "SECRET_KEY=django-insecure-test-key-1234567890"  >> app/.env
+          echo "POSTGRES_HOST=127.0.0.1"                         >> app/.env
+          echo "POSTGRES_DB=django_app"                          >> app/.env
+          echo "POSTGRES_USER=django_user"                       >> app/.env
+          echo "POSTGRES_PASSWORD=django1234"                    >> app/.env
+          echo "STRIPE_SECRET_KEY=sk_test_dummy"                 >> app/.env
+          echo "STRIPE_PUBLIC_KEY=pk_test_dummy"                 >> app/.env
+          echo "STRIPE_WEBHOOK_SECRET=whsec_dummy"               >> app/.env
 
       - name: Run tests
         env:
           DJANGO_SETTINGS_MODULE: settings.dev
-          SECRET_KEY: django-insecure-test-key-1234567890
         run: |
             cd app
             python manage.py test

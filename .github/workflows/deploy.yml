@@ -85,6 +85,7 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region:            ${{ env.AWS_REGION }}
 
+          
       # Authenticate with Amazon ECR (Elastic Container Registry)
       - name: Login to Amazon ECR
         id: login-ecr # Give this step an ID so we can reference its outputs later

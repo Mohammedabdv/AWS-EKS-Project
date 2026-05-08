@@ -44,7 +44,10 @@ jobs:
           python-version: '3.9'
 
       - name: Install dependencies
-        run: pip install -r requirements/dev.txt
+        run: |
+            pip install --upgrade pip setuptools
+            pip install -r requirements/dev.txt
+        
 
       - name: Configure test database
         run: |

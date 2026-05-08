@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
         - name: django
-          image: 831860492371.dkr.ecr.us-east-1.amazonaws.com/my-app-repo:latest
+          image: <ECR_URL>:latest
           command: ["gunicorn", "--bind", "0.0.0.0:8000", "app.wsgi:application"] 
           ports:
             - containerPort: 8000

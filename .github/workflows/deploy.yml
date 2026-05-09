@@ -140,6 +140,9 @@ jobs:
       - name: Install External Secrets Operator
         env:
           KUBECONFIG: /home/runner/.kube/config
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}          # ← أضف هذا
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}  # ← أضف هذا
+          AWS_DEFAULT_REGION: ${{ env.AWS_REGION }}  
         run: |
             helm repo add external-secrets https://charts.external-secrets.io
             helm repo update

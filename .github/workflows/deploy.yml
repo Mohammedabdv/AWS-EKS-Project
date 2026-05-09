@@ -154,6 +154,14 @@ jobs:
           kubectl apply -f kubernetes/namespace.yml
           kubectl apply -f kubernetes/configmap.yml
 
+      - name: Apply External Secrets
+        run: |
+          kubectl apply -f kubernetes/secret-store.yml
+          kubectl apply -f kubernetes/external-secret.yml
+          kubectl wait --for=create secret/django-secret \
+            -n django-app \
+            --timeout=60s
+
       - name: Run migrations
         run: |
           kubectl delete job django-migrate -n django-app --ignore-not-found=true

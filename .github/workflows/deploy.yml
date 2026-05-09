@@ -136,7 +136,12 @@ jobs:
           aws eks update-kubeconfig \
             --name ${{ env.EKS_CLUSTER }} \
             --region ${{ env.AWS_REGION }}
-
+      - name: Debug Identity and Cluster reachability
+        run: |
+                aws sts get-caller-identity
+                kubectl cluster-info
+                kubectl get nodes
+                
       - name: Install External Secrets Operator
         run: |
             helm repo add external-secrets https://charts.external-secrets.io

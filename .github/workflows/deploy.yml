@@ -136,7 +136,10 @@ jobs:
           aws eks update-kubeconfig \
             --name ${{ env.EKS_CLUSTER }} \
             --region ${{ env.AWS_REGION }}
+            
       - name: Install External Secrets Operator
+        env:
+          KUBECONFIG: /home/runner/.kube/config
         run: |
             helm repo add external-secrets https://charts.external-secrets.io
             helm repo update
@@ -150,11 +153,15 @@ jobs:
           sed -i 's|<ECR_URL>|${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}|g' kubernetes/job.yml
 
       - name: Apply namespace and config
+        env:
+          KUBECONFIG: /home/runner/.kube/config
         run: |
           kubectl apply -f kubernetes/namespace.yml
           kubectl apply -f kubernetes/configmap.yml
 
       - name: Apply External Secrets
+        env:
+          KUBECONFIG: /home/runner/.kube/config
         run: |
           kubectl apply -f kubernetes/secret-store.yml
           kubectl apply -f kubernetes/external-secret.yml
@@ -163,12 +170,16 @@ jobs:
             --timeout=60s
 
       - name: Run migrations
+        env:
+          KUBECONFIG: /home/runner/.kube/config
         run: |
           kubectl delete job django-migrate -n django-app --ignore-not-found=true
           kubectl apply -f kubernetes/job.yml
           
 
       - name: Deploy to EKS
+        env:
+          KUBECONFIG: /home/runner/.kube/config
         run: kubectl apply -f kubernetes/
 
       - name: Deployment success

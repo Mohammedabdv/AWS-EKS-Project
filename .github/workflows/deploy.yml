@@ -179,7 +179,7 @@ jobs:
 
       - name: Deploy to EKS
         env:
-          KUBECONFIG: /home/runner/.kube/config
+          KUBECONFIG: /home/runner/.kube/config 
         run: kubectl apply -f kubernetes/
 
       - name: Deployment success

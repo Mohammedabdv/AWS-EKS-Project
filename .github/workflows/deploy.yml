@@ -164,7 +164,7 @@ jobs:
 
       - name: Apply External Secrets
         env:
-          KUBECONFIG: /home/runner/.kube/config
+          KUBECONFIG: /home/runner/.kube/config 
         run: |
           kubectl apply -f kubernetes/secret-store.yml
           kubectl apply -f kubernetes/external-secret.yml

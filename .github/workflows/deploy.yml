@@ -142,15 +142,16 @@ jobs:
                 kubectl cluster-info
                 kubectl get nodes
 
-      - name: Install External Secrets Operator   
+      - name: Install External Secrets Operator
         run: |
             helm repo add external-secrets https://charts.external-secrets.io
             helm repo update
-            # لا حاجة لتعريف env هنا لأنها موروثة من Job Level
             helm upgrade --install external-secrets external-secrets/external-secrets \
               --namespace external-secrets \
               --create-namespace \
-              --wait
+              --set installCRDs=true \
+              --wait \
+              --timeout 5m
 
       - name: Update deployment image
         id: login-ecr

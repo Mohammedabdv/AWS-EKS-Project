@@ -34,16 +34,20 @@ module "rds" {
   db_password        = var.db_password
 }
 
-module "IAM_Policy" {
-  source = "../Modules/IAM_Policy"
-}
-
-
 module "Secrets_Manager" {
   source      = "../Modules/Secrets_Manager"
   secret_key  = var.secret_key
   db_username = var.db_username
   db_password = var.db_password
+}
+
+# الترتيب الصحيح بدون cycles:
+# IAM_Policy ──► EKS ──► IAM_IRSA
+#   (cluster/node roles)    (OIDC)    (IRSA roles)
+
+module "IAM_Policy" {
+  source = "../Modules/IAM_Policy"
+  # لا يعتمد على أي موديول آخر → لا توجد دورة
 }
 
 module "EKS" {
@@ -54,5 +58,15 @@ module "EKS" {
   public_subnet_ids  = module.networking.public_subnet_ids
   eks_sg_id          = module.security.EKS_SG_id
 
-  depends_on = [ module.IAM_Policy ]
+  depends_on = [module.IAM_Policy]
+}
+
+module "IAM_IRSA" {
+  source = "../Modules/IAM_IRSA"
+
+  # يعتمد على EKS فقط → لا توجد دورة
+  oidc_provider_arn = module.EKS.oidc_provider_arn
+  oidc_provider_url = module.EKS.oidc_provider_url
+
+  depends_on = [module.EKS]
 }

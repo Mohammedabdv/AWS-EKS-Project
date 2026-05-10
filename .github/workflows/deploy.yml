@@ -10,114 +10,117 @@ on:
       - main
 
 env:
-  AWS_REGION:     us-east-1
-  ECR_REPOSITORY: my-app-repo 
-  EKS_CLUSTER:    app_cluster
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true 
+  AWS_REGION:                         us-east-1
+  ECR_REPOSITORY:                     my-app-repo
+  EKS_CLUSTER:                        app_cluster
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
   # 1- Test Stage ──────────────────────────────────
   test:
-    runs-on: ubuntu-latest 
+    runs-on: ubuntu-latest
 
-    # Runs a temporary PostgreSQL container as a service for testing
     services:
       postgres:
         image: postgres:16.3
         env:
-          POSTGRES_DB: django_app
-          POSTGRES_USER: "django_user" 
-          POSTGRES_PASSWORD: "django1234"
+          POSTGRES_DB:       django_app
+          POSTGRES_USER:     django_user
+          POSTGRES_PASSWORD: django1234
         ports:
           - 5432:5432
-        options: --health-cmd="pg_isready" --health-interval=10s --health-timeout=5s --health-retries=3 # Waits until PostgreSQL is ready
-
-    steps:
-       # Defines the sequence of steps to execute
-      - name: Checkout code
-        uses: actions/checkout@v4 # Pulls the repository code into the runner
-
-      
-      - name: Setup Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.9'
-
-      - name: Install dependencies
-        run: |
-            pip install --upgrade pip setuptools wheel
-            pip install -r requirements/dev.txt
-        
-
-      
-
-      - name: Run tests
-        env:
-          DJANGO_SETTINGS_MODULE: settings.dev
-          SECRET_KEY: django-insecure-test-key-1234567890
-          POSTGRES_HOST: 127.0.0.1
-          POSTGRES_DB: django_app
-          POSTGRES_USER: django_user
-          POSTGRES_PASSWORD: django1234
-          STRIPE_SECRET_KEY: sk_test_dummy
-          STRIPE_PUBLIC_KEY: pk_test_dummy
-          STRIPE_WEBHOOK_SECRET: whsec_dummy
-        run: |
-            cd app
-            python manage.py test
-
-  # 2- Build Stage ────────────────────────────────
-  build:
-    if: github.event_name == 'push'
-    runs-on: ubuntu-latest
-    needs: test   
-    outputs:
-      image: ${{ steps.build-image.outputs.image }} # Exposes the built Docker image reference from this job so it can be used by other jobs (e.g., deploy)
+        options: >-
+          --health-cmd="pg_isready"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=3
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Configure AWS credentials # Authenticates the workflow with AWS using credentials stored in GitHub Secrets
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.9'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip setuptools wheel
+          pip install -r requirements/dev.txt
+
+      - name: Run migrations
+        env:
+          DJANGO_SETTINGS_MODULE: settings.dev
+          SECRET_KEY:             django-insecure-test-key-1234567890
+          POSTGRES_HOST:          127.0.0.1
+          POSTGRES_DB:            django_app
+          POSTGRES_USER:          django_user
+          POSTGRES_PASSWORD:      django1234
+        run: |
+          cd app
+          python manage.py migrate --noinput
+
+      - name: Run tests
+        env:
+          DJANGO_SETTINGS_MODULE: settings.dev
+          SECRET_KEY:             django-insecure-test-key-1234567890
+          POSTGRES_HOST:          127.0.0.1
+          POSTGRES_DB:            django_app
+          POSTGRES_USER:          django_user
+          POSTGRES_PASSWORD:      django1234
+          STRIPE_SECRET_KEY:      sk_test_dummy
+          STRIPE_PUBLIC_KEY:      pk_test_dummy
+          STRIPE_WEBHOOK_SECRET:  whsec_dummy
+        run: |
+          cd app
+          python manage.py test
+
+  # 2- Build Stage ─────────────────────────────────
+  build:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    needs: test
+    outputs:
+      image: ${{ steps.build-image.outputs.image }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          aws-access-key-id:     ${{ secrets.AWS_ACCESS_KEY_ID }} 
+          aws-access-key-id:     ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region:            ${{ env.AWS_REGION }}
 
-
-      # Authenticate with Amazon ECR (Elastic Container Registry)
       - name: Login to Amazon ECR
-        id: login-ecr # Give this step an ID so we can reference its outputs later
+        id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
-      # Build the Docker image, tag it, and push it to ECR
       - name: Build, tag, and push image to ECR
         id: build-image
         env:
-          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }} # Grab the registry URL from the previous step's output
-          IMAGE_TAG: ${{ github.sha }}
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG:    ${{ github.sha }}
         run: |
           docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG \
-          -f docker/app/dev/Dockerfile .  
-          docker tag $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG $ECR_REGISTRY/$ECR_REPOSITORY:latest
+            -f docker/app/dev/Dockerfile .
+          docker tag $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG \
+                     $ECR_REGISTRY/$ECR_REPOSITORY:latest
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
           echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
 
-        # 1- Build the Docker image and tag it with the commit SHA → for traceability, so we can roll back to any previous build
-        # 2- Also tag the image as 'latest'  → always points to the newest build used by deployments as a default
-        # 3- Push both tags to ECR
-        # 4- Save the full image URI as a step output so later  jobs/steps can reference it, e.g. to deploy this exact image to ECS or Kubernetes
-
-  # 3- Deploy Stage ───────────────────────────────
+  # 3- Deploy Stage ────────────────────────────────
   deploy:
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
     needs: build
-    # تعريف المتغيرات هنا يجعلها متاحة لكل الخطوات تلقائياً
     env:
-      KUBECONFIG: /tmp/kubeconfig 
+      KUBECONFIG: /tmp/kubeconfig
 
     steps:
       - name: Checkout code
@@ -132,36 +135,47 @@ jobs:
 
       - name: Update kubeconfig
         run: |
-          # الآن سيقوم AWS CLI بكتابة الملف مباشرة في المسار الذي حددناه فوق
           aws eks update-kubeconfig \
-            --name ${{ env.EKS_CLUSTER }} \
+            --name   ${{ env.EKS_CLUSTER }} \
             --region ${{ env.AWS_REGION }}
-      - name: Debug Identity and Cluster reachability
-        run: |
-                aws sts get-caller-identity
-                kubectl cluster-info
-                kubectl get nodes
 
       - name: Install External Secrets Operator
         run: |
-            helm repo add external-secrets https://charts.external-secrets.io
-            helm repo update
-            helm upgrade --install external-secrets external-secrets/external-secrets \
-              --namespace external-secrets \
-              --create-namespace \
-              --set installCRDs=true \
-              --wait \
-              --timeout 5m
+          helm repo add external-secrets https://charts.external-secrets.io
+          helm repo update
+          helm upgrade --install external-secrets external-secrets/external-secrets \
+            --namespace external-secrets \
+            --create-namespace \
+            --set installCRDs=true \
+            --set serviceAccount.annotations."eks\.amazonaws\.com/role-arn"=${{ secrets.EXTERNAL_SECRETS_ROLE_ARN }} \
+            --set serviceAccount.name=external-secrets-sa \
+            --wait \
+            --timeout 5m
 
-      - name: Update deployment image
+      # ← مضاف: تثبيت ALB Ingress Controller — بدونه الـ Ingress ما يشتغل
+      - name: Install ALB Ingress Controller
+        run: |
+          helm repo add eks https://aws.github.io/eks-charts
+          helm repo update
+          helm upgrade --install aws-load-balancer-controller eks/aws-load-balancer-controller \
+            --namespace kube-system \
+            --set clusterName=${{ env.EKS_CLUSTER }} \
+            --set serviceAccount.create=true \
+            --set serviceAccount.name=aws-load-balancer-controller \
+            --set serviceAccount.annotations."eks\.amazonaws\.com/role-arn"=${{ secrets.ALB_CONTROLLER_ROLE_ARN }} \
+            --wait \
+            --timeout 5m
+
+      - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
-        # ملاحظة: نقلنا الـ login لهنا لضمان توفر الـ registry URL للـ sed
-        
+
       - name: Prepare Kubernetes Files
         run: |
           sed -i 's|<ECR_URL>|${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}|g' kubernetes/deployment.yml
           sed -i 's|<ECR_URL>|${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}|g' kubernetes/job.yml
+          sed -i 's|<IMAGE_TAG>|${{ github.sha }}|g' kubernetes/deployment.yml
+          sed -i 's|<IMAGE_TAG>|${{ github.sha }}|g' kubernetes/job.yml
 
       - name: Apply Kubernetes Configurations
         run: |
@@ -169,17 +183,41 @@ jobs:
           kubectl apply -f kubernetes/configmap.yml
           kubectl apply -f kubernetes/secret-store.yml
           kubectl apply -f kubernetes/external-secret.yml
-          
-          # الانتظار حتى يتم إنشاء السكرت
-          kubectl wait --for=condition=Ready -n django-app --timeout=60s externalsecret/django-secret || true
 
-      - name: Run migrations
+          # ← إصلاح: كان يستنى externalsecret/django-secret (اسم الـ Secret مو الـ ExternalSecret)
+          # الاسم الصحيح هو اسم الـ ExternalSecret resource وهو django-external-secret
+          kubectl wait --for=condition=Ready \
+            externalsecret/django-external-secret \
+            --namespace django-app \
+            --timeout=60s
+
+      - name: Run Migrations
         run: |
-          kubectl delete job django-migrate -n django-app --ignore-not-found=true
+          kubectl delete job django-migrate \
+            --namespace django-app \
+            --ignore-not-found=true
           kubectl apply -f kubernetes/job.yml
 
+          kubectl wait job/django-migrate \
+            --for=condition=complete \
+            --namespace django-app \
+            --timeout=120s
+
+          kubectl logs job/django-migrate \
+            --namespace django-app
+
       - name: Deploy to EKS
-        run: kubectl apply -f kubernetes/deployment.yml
+        run: |
+          kubectl apply -f kubernetes/deployment.yml
+          kubectl apply -f kubernetes/service.yml
+          kubectl apply -f kubernetes/ingress.yml
+
+      # ← إصلاح: كان deployment/my-app-deployment لكن الاسم الفعلي في deployment.yml هو django-app
+      - name: Wait for rollout to complete
+        run: |
+          kubectl rollout status deployment/django-app \
+            --namespace django-app \
+            --timeout=300s
 
       - name: Deployment success
-        run: echo "Deployment completed successfully!"
+        run: echo "✅ Deployment to EKS completed successfully!"

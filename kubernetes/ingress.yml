@@ -4,13 +4,14 @@ metadata:
   name: django-ingress
   namespace: django-app
   annotations:
-    kubernetes.io/ingress.class: alb
     alb.ingress.kubernetes.io/scheme: internet-facing
     alb.ingress.kubernetes.io/target-type: ip
     alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}]'
+    # ← إصلاح: حُذف kubernetes.io/ingress.class (deprecated)، استُبدل بـ spec.ingressClassName أسفل
 spec:
+  ingressClassName: alb   # ← الطريقة الصحيحة الحديثة لتحديد الـ controller
   rules:
-     - http:
+    - http:
         paths:
           - path: /
             pathType: Prefix

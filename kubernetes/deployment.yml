@@ -15,11 +15,8 @@ spec:
     spec:
       containers:
         - name: django
-          image: <ECR_URL>:latest
+          image: <ECR_URL>:<IMAGE_TAG>   # ← إصلاح: كان :latest ثابتة، الـ sed في الـ workflow ما كان يشتغل
           command: ["gunicorn", "--bind", "0.0.0.0:8000", "app.wsgi:application"]
-          env:
-          - name: DJANGO_SETTINGS_MODULE
-            value: settings.base 
           ports:
             - containerPort: 8000
           envFrom:

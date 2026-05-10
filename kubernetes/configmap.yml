@@ -4,7 +4,8 @@ metadata:
   name: django-config
   namespace: django-app
 data:
-  DEBUG: "False"
+  DJANGO_SETTINGS_MODULE: "settings.base"   # ← مضاف: كان ناقص، الـ pods والـ job ما عندهم كيف يعرفون أي settings يستخدمون
+  DEBUG:         "False"
   ALLOWED_HOSTS: "*"
   POSTGRES_HOST: "django-app-db.cwvq668i83q3.us-east-1.rds.amazonaws.com"
   POSTGRES_DB:   "django_app"
